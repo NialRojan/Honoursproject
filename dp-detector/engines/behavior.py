@@ -14,6 +14,10 @@ _model = None
 def _load():
     global _tokenizer, _model
     if _model is None:
+        if not MODEL_DIR.exists():
+            raise RuntimeError(
+                "Behavior engine model not trained yet — run training/train_behavior.py (Task 10) first"
+            )
         _tokenizer = AutoTokenizer.from_pretrained(str(MODEL_DIR))
         _model = AutoModelForSequenceClassification.from_pretrained(str(MODEL_DIR))
         _model.eval()
