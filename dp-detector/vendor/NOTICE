@@ -1,0 +1,6 @@
+This project reuses logic and/or code from the following projects:
+
+- Pattern Highlighter (DAPDE Project) — MIT License
+  https://github.com/Dapde/Pattern-Highlighter
+  Used: forced-continuity pricing regular expressions, adapted into
+  engines/structure.py from chrome/scripts/constants.js.
