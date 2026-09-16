@@ -40,10 +40,16 @@ def list_fixtures():
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
+    if req.url and req.fixture_id:
+        raise HTTPException(
+            status_code=400,
+            detail="provide either 'url' or 'fixture_id', not both",
+        )
     if req.fixture_id:
-        fixture_path = FIXTURES_DIR / f"{req.fixture_id}.html"
-        if not fixture_path.exists():
+        known_fixtures = {p.stem for p in FIXTURES_DIR.glob("*.html")}
+        if req.fixture_id not in known_fixtures:
             raise HTTPException(status_code=404, detail=f"unknown fixture_id '{req.fixture_id}'")
+        fixture_path = FIXTURES_DIR / f"{req.fixture_id}.html"
         source, is_fixture = str(fixture_path), True
     elif req.url:
         source, is_fixture = req.url, False

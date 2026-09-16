@@ -23,3 +23,28 @@ def test_analyze_fixture_returns_valid_shape():
 def test_analyze_missing_fixture_returns_error():
     response = client.post("/analyze", json={"fixture_id": "does_not_exist"})
     assert response.status_code == 404
+
+
+def test_analyze_path_traversal_fixture_id_returns_404():
+    response = client.post("/analyze", json={"fixture_id": "../../../../etc/passwd"})
+    assert response.status_code == 404
+
+
+def test_analyze_rejects_both_url_and_fixture_id():
+    response = client.post(
+        "/analyze", json={"url": "https://example.com", "fixture_id": "precheck_consent"}
+    )
+    assert response.status_code == 400
+
+
+def test_easy_cancel_flow_scores_lower_than_precheck_consent():
+    """Regression guard: easy_cancel_flow is a clean/benign fixture and should
+    not out-rank precheck_consent, which has a genuine pre-checked consent
+    box flagged by both the structure and visual engines. Before the Fix 5
+    container-tag exclusion (engines/visual.py's _build_item_list), the
+    Visual engine produced a spurious nag_to_upgrade finding on
+    easy_cancel_flow (its <body>/<form> inherited "Upgrade now" text from an
+    unrelated sibling button), inverting this ranking (42 vs 39)."""
+    easy = client.post("/analyze", json={"fixture_id": "easy_cancel_flow"}).json()
+    precheck = client.post("/analyze", json={"fixture_id": "precheck_consent"}).json()
+    assert easy["risk_score"] < precheck["risk_score"]

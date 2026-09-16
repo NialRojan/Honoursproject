@@ -1,3 +1,5 @@
+import contextlib
+import io
 import re
 import tempfile
 from pathlib import Path
@@ -40,6 +42,23 @@ TAG_TO_CATEGORY = {
 CHECKBOX_CATEGORIES = {"CheckBox"}
 TEXT_CATEGORIES = {"pText", "TextView"}
 
+# Container/layout tags whose capture.Element.text can be inherited from
+# *all* of their descendants (capture/capture.py falls back to el.innerText
+# when an element has no text nodes of its own). Classifying one of these as
+# pText/TextView -- or even just handing its full inherited text into
+# UIGuard's item list under any category -- would let UIGuard's
+# examine_text_content() run its nagging/premium/ad keyword regexes against
+# what is really the whole page's text (examine_text_content runs on *any*
+# item with non-empty text, not just pText/TextView ones), causing spurious
+# matches (e.g. <body> or <form> picking up an unrelated "Upgrade now"
+# button's text and tripping a nag_to_upgrade false positive). Marking these
+# as a non-text category alone isn't enough to prevent that, so we drop them
+# from the item list entirely in _build_item_list instead. We intentionally
+# don't change capture.py's text semantics here -- Element.text is also read
+# by engines/structure.py's cancel-link-text check, so narrowing it there
+# would have wider blast radius than necessary.
+CONTAINER_TAGS = {"body", "html", "form", "div", "main", "section", "header", "footer", "nav", "ul", "ol"}
+
 
 def _category_for(el) -> str:
     if el.tag == "input":
@@ -63,6 +82,11 @@ def _area(bbox) -> float:
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
 
 
+# Assumes legacy comma-separated rgb()/rgba() syntax, which is what
+# Chromium's getComputedStyle() produces (and what capture.py's Playwright
+# capture always hands us). Does not handle CSS Color 4's space-separated
+# syntax (e.g. "rgb(0 0 0 / 50%)") -- a known limitation, not currently a
+# problem given Playwright's Chromium normalizes to legacy syntax.
 _RGB_RE = re.compile(
     r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)",
     re.IGNORECASE,
@@ -89,6 +113,11 @@ def _luminance(css_color) -> float | None:
     r, g, b, a = match.groups()
     if a is not None and float(a) == 0.0:
         return None
+    # Partial transparency (0 < a < 1) is currently treated as fully opaque
+    # -- we use the raw r/g/b channel values below without compositing
+    # against a background color. A known simplification, not exercised by
+    # current fixtures (none use partially transparent text/background
+    # colors), but not a correct general solution.
     r, g, b = float(r), float(g), float(b)
     return 0.299 * r + 0.587 * g + 0.114 * b
 
@@ -146,6 +175,8 @@ def _merge_checkboxes_with_labels(raw_items: list) -> list:
 def _build_item_list(capture) -> list:
     raw_items = []
     for el in capture.elements:
+        if el.tag in CONTAINER_TAGS:
+            continue
         x1, y1, x2, y2 = el.bbox
         if x2 <= x1 or y2 <= y1:
             continue
@@ -180,14 +211,19 @@ def analyze(capture) -> list:
         img_path = Path(tmpdir) / "screenshot.png"
         img_path.write_bytes(capture.screenshot_png)
 
-        final_results = rule_check.predict_type(
-            all_properties=item_list,
-            img_h=int(max_y),
-            img_w=int(max_x),
-            vis_save_root=tmpdir,
-            img_path=str(img_path),
-            vis=False,
-        )
+        # rule_check.predict_type() (and functions it calls, like
+        # examine_text_content's debug prints) write debug output straight to
+        # stdout on every call. We don't modify the vendored file, so we
+        # silence it here at the call site instead.
+        with contextlib.redirect_stdout(io.StringIO()):
+            final_results = rule_check.predict_type(
+                all_properties=item_list,
+                img_h=int(max_y),
+                img_w=int(max_x),
+                vis_save_root=tmpdir,
+                img_path=str(img_path),
+                vis=False,
+            )
 
     findings = []
     for dp_code, instances in (final_results or {}).items():
