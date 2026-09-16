@@ -108,9 +108,13 @@ def _walk_click_trace(page) -> list:
         new_text = page.inner_text("body")
         if new_text == previous_text:
             break
+        try:
+            clicked_selector = target.evaluate("el => el.id ? '#' + el.id : el.tagName")
+        except Exception:
+            clicked_selector = "unknown"
         trace.append(ClickTraceStep(
             step_index=depth,
-            clicked_selector=target.evaluate("el => el.id ? '#' + el.id : el.tagName"),
+            clicked_selector=clicked_selector,
             visible_text_after=new_text,
         ))
         previous_text = new_text
@@ -120,22 +124,23 @@ def _walk_click_trace(page) -> list:
 def capture(source: str, is_fixture: bool = False) -> Capture:
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page()
-        if is_fixture:
-            file_url = "file://" + str(Path(source).resolve())
-            page.goto(file_url)
-            url = file_url
-        else:
-            page.goto(source, wait_until="networkidle")
-            url = source
+        try:
+            page = browser.new_page()
+            if is_fixture:
+                file_url = "file://" + str(Path(source).resolve())
+                page.goto(file_url)
+                url = file_url
+            else:
+                page.goto(source, wait_until="networkidle")
+                url = source
 
-        dom_html = page.content()
-        screenshot_png = page.screenshot()
-        rendered_text = page.inner_text("body")
-        elements = _extract_elements(page)
-        click_trace = _walk_click_trace(page)
-
-        browser.close()
+            dom_html = page.content()
+            screenshot_png = page.screenshot()
+            rendered_text = page.inner_text("body")
+            elements = _extract_elements(page)
+            click_trace = _walk_click_trace(page)
+        finally:
+            browser.close()
 
     return Capture(
         url=url, dom_html=dom_html, screenshot_png=screenshot_png,
