@@ -54,7 +54,13 @@ def analyze(req: AnalyzeRequest):
         source, is_fixture = str(fixture_path), True
     elif req.url:
         # Security: reject non-http(s) schemes to prevent file:// local file reads and SSRF
-        parsed = urlparse(req.url)
+        try:
+            parsed = urlparse(req.url)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="url must use http or https",
+            )
         if not parsed.scheme or parsed.scheme.lower() not in ("http", "https"):
             raise HTTPException(
                 status_code=400,

@@ -75,3 +75,12 @@ def test_analyze_rejects_unparseable_url():
     assert response.status_code == 400
     body = response.json()
     assert "detail" in body
+
+
+def test_analyze_rejects_malformed_ipv6_url():
+    """Malformed IPv6 URLs should be rejected with 400, not crash with 500.
+    Regression test for unhandled ValueError from urlparse on malformed input."""
+    response = client.post("/analyze", json={"url": "http://[::1"})
+    assert response.status_code == 400
+    body = response.json()
+    assert "detail" in body
