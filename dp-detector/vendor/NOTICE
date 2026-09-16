@@ -11,3 +11,10 @@ This project reuses logic and/or code from the following projects:
   unmodified except for converting two imports to relative imports.
   Original paper: Chen et al., "Unveiling the Tricks: Automated
   Detection of Dark Patterns in Mobile Applications", UIST 2023.
+
+- ec-darkpattern dataset — Apache License 2.0
+  https://github.com/yamanalab/ec-darkpattern
+  Used: dataset/dataset.tsv, downloaded at training time by
+  training/train_linguistic.py, to fine-tune the Linguistic engine's
+  BERT classifier. Underlying text originally from Mathur et al.,
+  "Dark Patterns at Scale" (CSCW 2019).
