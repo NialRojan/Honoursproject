@@ -3,6 +3,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from capture.capture import capture
@@ -70,3 +72,14 @@ def analyze(req: AnalyzeRequest):
         "elements": [asdict(e) for e in cap.elements],
         "engine_errors": engine_errors,
     }
+
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/")
+def index():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dark Pattern Detector</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Dark Pattern Detector</h1>
+    <div id="controls">
+      <input id="url-input" type="text" placeholder="https://example.com">
+      <button id="analyze-url-btn">Analyze URL</button>
+      <select id="fixture-select"></select>
+      <button id="analyze-fixture-btn">Analyze Fixture</button>
+    </div>
+    <div id="risk-badge" class="hidden">Risk Score: <span id="risk-score-value">-</span>/100</div>
+  </header>
+  <main>
+    <div id="screenshot-container">
+      <img id="screenshot" style="display:none;">
+      <div id="overlay"></div>
+    </div>
+    <div id="findings-panel">
+      <h2>Findings</h2>
+      <ul id="findings-list"></ul>
+    </div>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
