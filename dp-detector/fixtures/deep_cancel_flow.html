@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html><head><title>Manage Account</title></head>
+<body data-fixture-id="deep_cancel_flow">
+  <div id="step-0">
+    <button id="upgrade-btn">Upgrade now (1 click)</button>
+    <a id="start-cancel" href="#" onclick="document.getElementById('step-0').style.display='none';document.getElementById('step-1').style.display='block';return false;">Cancel account</a>
+  </div>
+  <div id="step-1" style="display:none;">
+    <p>Wait! Are you sure? You'll lose all your data.</p>
+    <a id="step-1-continue" href="#" onclick="document.getElementById('step-1').style.display='none';document.getElementById('step-2').style.display='block';return false;">Continue cancelling</a>
+  </div>
+  <div id="step-2" style="display:none;">
+    <p>Have you tried contacting support first?</p>
+    <a id="step-2-continue" href="#" onclick="document.getElementById('step-2').style.display='none';document.getElementById('step-3').style.display='block';return false;">Continue cancelling</a>
+  </div>
+  <div id="step-3" style="display:none;">
+    <p>This is your final confirmation.</p>
+    <button id="confirm-cancel">Confirm cancellation</button>
+  </div>
+</body></html>
