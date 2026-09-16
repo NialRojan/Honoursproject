@@ -34,11 +34,13 @@ real URL) and click Analyze.
 
 ## Manual verification checklist
 
-**Note:** All items below are checkable except the Behavior engine item, which is currently blocked on Task 9/10 (Zenodo external dependency).
+**Note:** All items below are checkable except the Behavior engine item, which is currently blocked on Task 9/10 (Zenodo external dependency). When the Behavior engine's model isn't trained, `/analyze` still returns a 200 response — the engine's failure is surfaced visibly as a red-bordered entry in `engine_errors` (both in the API response and in the frontend), not silently dropped.
 
-- [ ] `disguised_button` fixture flags a visual finding (false hierarchy / interface inference)
-- [ ] `precheck_consent` fixture flags both a structure finding (preselected_consent) and a visual finding (preselection)
-- [ ] `confirm_shaming` fixture flags a linguistic finding (manipulative_text)
+- [x] `disguised_button` fixture flags a visual finding (false hierarchy / interface inference)
+- [x] `precheck_consent` fixture flags both a structure finding (preselected_consent) and a visual finding (preselection)
+- [x] `confirm_shaming` fixture flags a linguistic finding (manipulative_text)
 - [ ] `deep_cancel_flow` fixture flags a behavior finding (roach_motel); `easy_cancel_flow` does not
       ⏸ **Not yet checkable — blocked on Task 9/10 (Zenodo external dependency)**
 - [ ] A real public URL (e.g. a known cookie-consent-heavy news site) analyzes without crashing and returns a risk score
+
+**Caution:** when analyzing a live URL (as opposed to a bundled fixture), `_walk_click_trace` (in `capture/capture.py`) actively clicks any cancel/unsubscribe-like controls it finds on the page, up to `MAX_CLICK_DEPTH` times, in order to build the Behavior engine's click trace. Do not point it at a logged-in or otherwise stateful page you don't want to trigger real actions (e.g. an actual account cancellation) on.
