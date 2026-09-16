@@ -48,3 +48,30 @@ def test_easy_cancel_flow_scores_lower_than_precheck_consent():
     easy = client.post("/analyze", json={"fixture_id": "easy_cancel_flow"}).json()
     precheck = client.post("/analyze", json={"fixture_id": "precheck_consent"}).json()
     assert easy["risk_score"] < precheck["risk_score"]
+
+
+def test_analyze_rejects_file_scheme_url():
+    """Security test: file:// URLs should be rejected with 400 to prevent
+    local file read via file:///etc/passwd or similar."""
+    response = client.post("/analyze", json={"url": "file:///etc/passwd"})
+    assert response.status_code == 400
+    body = response.json()
+    assert "detail" in body
+    # Ensure the response doesn't leak file contents
+    assert "root:" not in body.get("detail", "")
+
+
+def test_analyze_rejects_invalid_scheme_url():
+    """Security test: non-http(s) schemes should be rejected with 400."""
+    response = client.post("/analyze", json={"url": "ftp://example.com"})
+    assert response.status_code == 400
+    body = response.json()
+    assert "detail" in body
+
+
+def test_analyze_rejects_unparseable_url():
+    """Malformed URLs without a proper scheme should be rejected with 400."""
+    response = client.post("/analyze", json={"url": "not-a-valid-url"})
+    assert response.status_code == 400
+    body = response.json()
+    assert "detail" in body

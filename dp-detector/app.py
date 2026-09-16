@@ -1,6 +1,7 @@
 import base64
 from dataclasses import asdict
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -52,6 +53,13 @@ def analyze(req: AnalyzeRequest):
         fixture_path = FIXTURES_DIR / f"{req.fixture_id}.html"
         source, is_fixture = str(fixture_path), True
     elif req.url:
+        # Security: reject non-http(s) schemes to prevent file:// local file reads and SSRF
+        parsed = urlparse(req.url)
+        if not parsed.scheme or parsed.scheme.lower() not in ("http", "https"):
+            raise HTTPException(
+                status_code=400,
+                detail="url must use http or https",
+            )
         source, is_fixture = req.url, False
     else:
         raise HTTPException(status_code=400, detail="must provide either 'url' or 'fixture_id'")
