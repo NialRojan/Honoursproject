@@ -18,3 +18,11 @@ This project reuses logic and/or code from the following projects:
   training/train_linguistic.py, to fine-tune the Linguistic engine's
   BERT classifier. Underlying text originally from Mathur et al.,
   "Dark Patterns at Scale" (CSCW 2019).
+
+- AppRay-Dark / AppRay-Light datasets — from AppRay, MIT License
+  https://github.com/chenjshnn/AppRay
+  Dataset: https://zenodo.org/records/13268006
+  Used: labeled UI screenshots + bounding-box annotations, OCR'd via
+  training/prepare_behavior_dataset.py to build a text classification
+  dataset for the Behavior engine. Full AppRay LLM-guided exploration
+  and image-fusion model are not used — see design spec decision log.
