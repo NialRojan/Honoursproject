@@ -34,8 +34,11 @@ real URL) and click Analyze.
 
 ## Manual verification checklist
 
+**Note:** All items below are checkable except the Behavior engine item, which is currently blocked on Task 9/10 (Zenodo external dependency).
+
 - [ ] `disguised_button` fixture flags a visual finding (false hierarchy / interface inference)
 - [ ] `precheck_consent` fixture flags both a structure finding (preselected_consent) and a visual finding (preselection)
 - [ ] `confirm_shaming` fixture flags a linguistic finding (manipulative_text)
 - [ ] `deep_cancel_flow` fixture flags a behavior finding (roach_motel); `easy_cancel_flow` does not
+      ⏸ **Not yet checkable — blocked on Task 9/10 (Zenodo external dependency)**
 - [ ] A real public URL (e.g. a known cookie-consent-heavy news site) analyzes without crashing and returns a risk score
