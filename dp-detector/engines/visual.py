@@ -1,3 +1,4 @@
+import re
 import tempfile
 from pathlib import Path
 
@@ -24,7 +25,7 @@ rule_check.flag_TM = False
 # real checked/unchecked state from the DOM "checked" attribute -- not a
 # placeholder -- it is safe and correct to enable this flag.
 rule_check.flag_status = True
-rule_check.flag_grouping = False
+rule_check.flag_grouping = True
 
 TAG_TO_CATEGORY = {
     "button": "Button",
@@ -60,6 +61,36 @@ def _contains(outer_bbox, inner_bbox, eps=1.0) -> bool:
 def _area(bbox) -> float:
     x1, y1, x2, y2 = bbox
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
+
+
+_RGB_RE = re.compile(
+    r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)",
+    re.IGNORECASE,
+)
+
+
+def _luminance(css_color) -> float | None:
+    """Parse a computed CSS color string ("rgb(r, g, b)" or "rgba(r, g, b, a)")
+    into standard relative luminance (0.299*r + 0.587*g + 0.114*b, 0-255 scale).
+
+    Returns None when the color can't be parsed as a concrete rgb/rgba triplet,
+    or when it's fully transparent (alpha == 0) -- in both cases there's no
+    real color to measure, so None ("unknown") is the honest signal, not a
+    fabricated default. grouping.py's get_grouping already treats bg_lum/
+    fg_lum of None as "skip this item's contribution" (see the
+    `if bg_lum is not None: elecons_bg.append(bg_lum)` guard), so returning
+    None here is a legitimate, expected value, not an error path.
+    """
+    if not css_color or not isinstance(css_color, str):
+        return None
+    match = _RGB_RE.search(css_color)
+    if not match:
+        return None
+    r, g, b, a = match.groups()
+    if a is not None and float(a) == 0.0:
+        return None
+    r, g, b = float(r), float(g), float(b)
+    return 0.299 * r + 0.587 * g + 0.114 * b
 
 
 def _merge_checkboxes_with_labels(raw_items: list) -> list:
@@ -124,6 +155,8 @@ def _build_item_list(capture) -> list:
             "bbox": [x1, y1, x2, y2],
             "text": el.text,
             "score": 1.0,
+            "bg_lum": _luminance(el.background_color),
+            "fg_lum": _luminance(el.text_color),
         }
         if category in CHECKBOX_CATEGORIES:
             item["checked"] = "checked" in el.attrs

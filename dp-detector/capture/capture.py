@@ -32,6 +32,8 @@ EXTRACT_ELEMENTS_JS = """
             visibility: style.visibility,
             font_size: parseFloat(style.fontSize) || 0,
             opacity: parseFloat(style.opacity),
+            background_color: style.backgroundColor,
+            text_color: style.color,
             attrs: attrs,
         });
     }
@@ -50,6 +52,8 @@ class Element:
     visibility: str
     font_size: float
     opacity: float
+    background_color: str
+    text_color: str
     attrs: dict = field(default_factory=dict)
 
 
@@ -76,7 +80,8 @@ def _extract_elements(page) -> list:
         Element(
             selector=r["selector"], tag=r["tag"], text=r["text"], bbox=tuple(r["bbox"]),
             display=r["display"], visibility=r["visibility"], font_size=r["font_size"],
-            opacity=r["opacity"], attrs=r["attrs"],
+            opacity=r["opacity"], background_color=r["background_color"],
+            text_color=r["text_color"], attrs=r["attrs"],
         )
         for r in raw
     ]
