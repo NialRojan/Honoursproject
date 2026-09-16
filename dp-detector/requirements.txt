@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+playwright==1.63.0
+beautifulsoup4==4.12.3
+torch==2.14.0
+transformers==5.17.0
+pandas==2.2.3
+scikit-learn==1.5.2
+opencv-python-headless==4.10.0.84
+matplotlib==3.9.2
+easyocr==1.7.2
+pillow==12.3.0
+requests==2.32.3
+pytest==8.3.4
