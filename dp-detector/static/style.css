@@ -13,3 +13,4 @@ main { display: flex; gap: 16px; padding: 16px; }
 #findings-panel { flex: 1; background: #fff; border: 1px solid #ddd; padding: 12px; max-height: 80vh; overflow-y: auto; }
 #findings-list { list-style: none; padding: 0; margin: 0; }
 #findings-list li { border-left: 4px solid #999; padding: 8px; margin-bottom: 8px; background: #fafafa; }
+#findings-list li.engine-error { border: 2px solid #c0392b; border-left-width: 4px; background: #fdecea; color: #7a1f14; }
