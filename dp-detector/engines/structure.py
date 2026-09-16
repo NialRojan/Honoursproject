@@ -1,8 +1,6 @@
 import re
 from engines.base import Finding
 
-MARKETING_KEYWORDS_RE = re.compile(r"marketing|special offers|newsletter|promot", re.IGNORECASE)
-
 # Adapted from Pattern Highlighter (DAPDE Project, MIT License)
 # https://github.com/Dapde/Pattern-Highlighter — chrome/scripts/constants.js, "Forced Continuity" pattern
 FORCED_CONTINUITY_RES = [
@@ -23,7 +21,7 @@ def _is_hidden(el) -> bool:
     return el.display == "none" or el.visibility == "hidden" or el.font_size < 2 or el.opacity == 0
 
 
-def _cancel_text_match(text: str) -> bool:
+def CANCEL_RE_MATCH(text: str) -> bool:
     return bool(re.search(r"cancel|unsubscribe|delete.*account", text, re.IGNORECASE))
 
 
@@ -43,7 +41,7 @@ def analyze(capture) -> list:
                 ))
 
     for el in capture.elements:
-        if el.tag == "a" and _cancel_text_match(el.text) and _is_hidden(el):
+        if el.tag == "a" and CANCEL_RE_MATCH(el.text) and _is_hidden(el):
             findings.append(Finding(
                 engine="structure", pattern_type="hidden_cancel_link", confidence=0.8,
                 evidence=f"cancel-related link '{el.selector}' is hidden (display={el.display}, visibility={el.visibility})",
