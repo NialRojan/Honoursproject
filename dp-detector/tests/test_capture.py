@@ -70,6 +70,36 @@ def test_extract_elements_handles_unparseable_computed_opacity():
 
     assert all(not (isinstance(r["opacity"], float) and math.isnan(r["opacity"])) for r in raw)
 
+def test_extract_elements_reflects_live_checked_state_not_just_attribute():
+    # Real sites (React/Vue/etc.) set checkbox state via the `.checked` DOM
+    # property, which does not update the reflected `checked` HTML attribute.
+    # Structure/Visual's preselected-consent detection keys off `"checked" in
+    # el.attrs`, so a JS-checked box was invisible to both engines on any
+    # real, JS-rendered page even though it's visibly checked on screen.
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.set_content("""
+                <html><body>
+                  <input type="checkbox" id="js-checked">
+                  <input type="checkbox" id="js-unchecked" checked>
+                </body></html>
+            """)
+            page.evaluate("""
+                () => {
+                    document.getElementById('js-checked').checked = true;
+                    document.getElementById('js-unchecked').checked = false;
+                }
+            """)
+            raw = page.evaluate(EXTRACT_ELEMENTS_JS)
+        finally:
+            browser.close()
+
+    by_id = {r["attrs"].get("id"): r for r in raw if r["tag"] == "input"}
+    assert "checked" in by_id["js-checked"]["attrs"]
+    assert "checked" not in by_id["js-unchecked"]["attrs"]
+
 def test_capture_raises_on_non_2xx_http_status():
     server = HTTPServer(("127.0.0.1", 0), _BadGatewayHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)

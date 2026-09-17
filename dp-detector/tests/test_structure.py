@@ -3,6 +3,7 @@ from capture.capture import capture
 from engines.structure import analyze
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
+TEST_FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 def _types(findings):
     return {f.pattern_type for f in findings}
@@ -22,3 +23,9 @@ def test_detects_forced_continuity_pricing():
 def test_no_false_positive_on_easy_cancel_flow():
     cap = capture(str(FIXTURES_DIR / "easy_cancel_flow.html"), is_fixture=True)
     assert _types(analyze(cap)) == set()
+
+def test_detects_consent_checked_via_js_property_not_html_attribute():
+    # Real sites (React/Vue/etc.) check a box via the `.checked` DOM property,
+    # not the static HTML attribute -- this must still be caught.
+    cap = capture(str(TEST_FIXTURES_DIR / "js_checked_consent.html"), is_fixture=True)
+    assert "preselected_consent" in _types(analyze(cap))

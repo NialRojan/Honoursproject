@@ -17,6 +17,14 @@ EXTRACT_ELEMENTS_JS = """
         const style = window.getComputedStyle(el);
         const attrs = {};
         for (const attr of el.attributes) { attrs[attr.name] = attr.value; }
+        // Frameworks (React, Vue, etc.) set checkbox/radio state via the
+        // `.checked` DOM property, which does not update the reflected HTML
+        // attribute. Sync attrs.checked to the live property so downstream
+        // "checked" in el.attrs checks see real on-screen state, not just
+        // whatever was in the initial static markup.
+        if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
+            if (el.checked) { attrs.checked = ''; } else { delete attrs.checked; }
+        }
         const ownText = Array.from(el.childNodes)
             .filter(n => n.nodeType === 3)
             .map(n => n.textContent.trim())
