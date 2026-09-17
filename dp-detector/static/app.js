@@ -150,14 +150,32 @@ async function analyze(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    findingsList.innerHTML = `<li>Error: ${res.status}</li>`;
+    // Show the API's actual detail message (e.g. "url must use http or
+    // https", "capture failed: ...") rather than a bare status code --
+    // the code alone doesn't tell the user what to fix.
+    let detail = res.statusText;
+    try {
+      detail = (await res.json()).detail || detail;
+    } catch (e) {
+      // response body wasn't JSON; fall back to statusText
+    }
+    findingsList.innerHTML = `<li>Error ${res.status}: ${detail}</li>`;
     return;
   }
   render(await res.json());
 }
 
+// Most people type a bare domain (as in a browser address bar) without a
+// scheme. The API deliberately rejects that (only http/https are allowed,
+// to block file:// and other local-read vectors) rather than guessing, so
+// normalize here instead of surfacing a confusing 400 for the common case.
+function normalizeUrl(raw) {
+  return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw) ? raw : "https://" + raw;
+}
+
 document.getElementById("analyze-url-btn").addEventListener("click", () => {
-  if (urlInput.value.trim()) analyze({ url: urlInput.value.trim() });
+  const raw = urlInput.value.trim();
+  if (raw) analyze({ url: normalizeUrl(raw) });
 });
 
 document.getElementById("analyze-fixture-btn").addEventListener("click", () => {
