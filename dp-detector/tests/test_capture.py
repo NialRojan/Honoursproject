@@ -1,5 +1,12 @@
+import math
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from capture.capture import capture
+
+import pytest
+from playwright.sync_api import sync_playwright
+
+from capture.capture import EXTRACT_ELEMENTS_JS, capture
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -20,3 +27,57 @@ def test_capture_click_trace_on_deep_cancel_flow():
 def test_capture_click_trace_on_easy_cancel_flow():
     result = capture(str(FIXTURES_DIR / "easy_cancel_flow.html"), is_fixture=True)
     assert len(result.click_trace) <= 1
+
+class _BadGatewayHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(502)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"<html><body><h1>502 Bad Gateway</h1></body></html>")
+
+    def log_message(self, format, *args):
+        pass
+
+def test_extract_elements_handles_unparseable_computed_opacity():
+    # getComputedStyle(el).opacity returned "" for some elements on real sites
+    # (observed in production), making parseFloat(...) evaluate to NaN. NaN
+    # then crashes /analyze's JSON response (Starlette's JSONResponse uses
+    # allow_nan=False). Force the exact browser condition via a Proxy over
+    # getComputedStyle rather than relying on finding the triggering site.
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.set_content("<html><body><div id='x'>hi</div></body></html>")
+            page.evaluate("""
+                () => {
+                    const original = window.getComputedStyle;
+                    window.getComputedStyle = (el, ...rest) => {
+                        const style = original(el, ...rest);
+                        return new Proxy(style, {
+                            get(target, prop) {
+                                if (prop === 'opacity') return '';
+                                const v = target[prop];
+                                return typeof v === 'function' ? v.bind(target) : v;
+                            }
+                        });
+                    };
+                }
+            """)
+            raw = page.evaluate(EXTRACT_ELEMENTS_JS)
+        finally:
+            browser.close()
+
+    assert all(not (isinstance(r["opacity"], float) and math.isnan(r["opacity"])) for r in raw)
+
+def test_capture_raises_on_non_2xx_http_status():
+    server = HTTPServer(("127.0.0.1", 0), _BadGatewayHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = server.server_address[1]
+        with pytest.raises(RuntimeError, match="502"):
+            capture(f"http://127.0.0.1:{port}/", is_fixture=False)
+    finally:
+        server.shutdown()
+        thread.join()

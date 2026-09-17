@@ -31,7 +31,7 @@ EXTRACT_ELEMENTS_JS = """
             display: style.display,
             visibility: style.visibility,
             font_size: parseFloat(style.fontSize) || 0,
-            opacity: parseFloat(style.opacity),
+            opacity: parseFloat(style.opacity) || 1,
             background_color: style.backgroundColor,
             text_color: style.color,
             attrs: attrs,
@@ -136,7 +136,11 @@ def capture(source: str, is_fixture: bool = False) -> Capture:
                 page.goto(file_url)
                 url = file_url
             else:
-                page.goto(source, wait_until="networkidle")
+                response = page.goto(source, wait_until="networkidle")
+                if response is not None and not response.ok:
+                    raise RuntimeError(
+                        f"upstream returned HTTP {response.status} for {source}"
+                    )
                 url = source
 
             dom_html = page.content()
