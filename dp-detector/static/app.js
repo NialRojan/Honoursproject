@@ -13,6 +13,12 @@ const ENGINE_COLORS = {
   behavior: "#f39c12",
 };
 
+// The risk score in the header always reflects every engine's findings
+// combined, regardless of the active filter below -- the filter only
+// changes which findings are *shown*, not what's included in the score.
+let lastData = null;
+let activeEngine = "all";
+
 async function loadFixtures() {
   const res = await fetch("/fixtures");
   const data = await res.json();
@@ -33,6 +39,11 @@ function renderEngineErrors(engineErrors) {
   });
 }
 
+function filteredFindings(data) {
+  if (activeEngine === "all") return data.findings;
+  return data.findings.filter((f) => f.engine === activeEngine);
+}
+
 function drawBoxes(data) {
   overlay.innerHTML = "";
 
@@ -47,7 +58,7 @@ function drawBoxes(data) {
     ? screenshot.clientWidth / screenshot.naturalWidth
     : 1;
 
-  data.findings.forEach((f) => {
+  filteredFindings(data).forEach((f) => {
     if (!f.element_ref) return;
     const el = elementBySelector(data.elements, f.element_ref);
     if (!el) return;
@@ -63,31 +74,71 @@ function drawBoxes(data) {
   });
 }
 
-function render(data) {
-  riskBadge.classList.remove("hidden");
-  riskScoreValue.textContent = data.risk_score;
-
-  overlay.innerHTML = "";
+function renderFindingsList(data) {
   findingsList.innerHTML = "";
 
+  // Engine errors are shown regardless of the active filter -- if you've
+  // filtered to "behavior" and it failed to run, you should still see why,
+  // not an empty list that looks like "nothing to report".
   renderEngineErrors(data.engine_errors);
 
-  data.findings.forEach((f, i) => {
+  const findings = filteredFindings(data);
+  if (findings.length === 0 && !(data.engine_errors && Object.keys(data.engine_errors).length)) {
+    const li = document.createElement("li");
+    li.textContent = activeEngine === "all"
+      ? "No findings."
+      : `No ${activeEngine} findings.`;
+    findingsList.appendChild(li);
+    return;
+  }
+
+  findings.forEach((f) => {
     const li = document.createElement("li");
     li.style.borderLeftColor = ENGINE_COLORS[f.engine] || "#999";
     li.innerHTML = `<strong>${f.engine}</strong>: ${f.pattern_type} (confidence ${f.confidence})<br><small>${f.evidence}</small>`;
     findingsList.appendChild(li);
   });
+}
+
+function setFilterButtonUI(engine) {
+  document.querySelectorAll(".filter-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.engine === engine);
+  });
+}
+
+// Called when the user clicks a filter button, i.e. after the screenshot
+// for the current analysis is already loaded -- safe to draw boxes
+// immediately, unlike the initial render() below.
+function setActiveEngine(engine) {
+  activeEngine = engine;
+  setFilterButtonUI(engine);
+  if (lastData) {
+    renderFindingsList(lastData);
+    drawBoxes(lastData);
+  }
+}
+
+function render(data) {
+  lastData = data;
+  activeEngine = "all";
+  setFilterButtonUI("all");
+
+  // The risk score always reflects every engine combined -- filtering only
+  // changes which findings are displayed below, never the score itself.
+  riskBadge.classList.remove("hidden");
+  riskScoreValue.textContent = data.risk_score;
+
+  renderFindingsList(data);
 
   // Boxes depend on the screenshot's *rendered* size, which is only known
   // once the browser has laid out the image. Setting .src is async, so we
   // draw boxes in the onload handler (and also handle the case where the
   // image is already cached/loaded, in which case onload may not fire).
-  screenshot.onload = () => drawBoxes(data);
+  screenshot.onload = () => drawBoxes(lastData);
   screenshot.src = "data:image/png;base64," + data.screenshot_base64;
   screenshot.style.display = "block";
   if (screenshot.complete && screenshot.naturalWidth) {
-    drawBoxes(data);
+    drawBoxes(lastData);
   }
 }
 
@@ -111,6 +162,10 @@ document.getElementById("analyze-url-btn").addEventListener("click", () => {
 
 document.getElementById("analyze-fixture-btn").addEventListener("click", () => {
   analyze({ fixture_id: fixtureSelect.value });
+});
+
+document.querySelectorAll(".filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setActiveEngine(btn.dataset.engine));
 });
 
 loadFixtures();

@@ -11,6 +11,9 @@ main { display: flex; gap: 16px; padding: 16px; }
 #overlay { position: absolute; top: 0; left: 0; }
 .finding-box { position: absolute; border: 2px solid; background: rgba(255,0,0,0.08); pointer-events: none; }
 #findings-panel { flex: 1; background: #fff; border: 1px solid #ddd; padding: 12px; max-height: 80vh; overflow-y: auto; }
+#engine-filters { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-btn { padding: 4px 10px; border: 1px solid #ccc; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.filter-btn.active { background: #222; color: #fff; border-color: #222; }
 #findings-list { list-style: none; padding: 0; margin: 0; }
 #findings-list li { border-left: 4px solid #999; padding: 8px; margin-bottom: 8px; background: #fafafa; }
 #findings-list li.engine-error { border: 2px solid #c0392b; border-left-width: 4px; background: #fdecea; color: #7a1f14; }
