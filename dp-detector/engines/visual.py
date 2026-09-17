@@ -29,6 +29,39 @@ rule_check.flag_TM = False
 rule_check.flag_status = True
 rule_check.flag_grouping = True
 
+# grouping.py's false-hierarchy check (get_grouping, called from
+# rule_check.check_AM_FH) does `max(elecons_bg) - min(elecons_bg)` with no
+# guard for an empty list. elecons_bg/elecons_fg only collect a cluster's
+# luminance values when _luminance() could actually determine one -- and
+# _luminance() legitimately returns None (not a fabricated fallback, see
+# _luminance() below) for fully transparent or unparseable colors. On a
+# real page with many transparent-background elements, a qualifying
+# cluster can end up with zero determinable luminance values in it, and
+# grouping.py raises ValueError("max() iterable argument is empty").
+#
+# That crash happens *after* rule_check.predict_type() has already run
+# check_naggings/check_sneaking/check_obstruction/check_interface_inference/
+# check_forced_action/final_check (see predict_type()'s body) -- so an
+# uncaught crash here doesn't just skip the false-hierarchy check, it
+# discards every finding predict_type() already computed for the page,
+# since the whole call raises before returning. We don't modify vendored
+# files, so we wrap just this one function from our own adapter: when the
+# luminance data genuinely can't answer the false-hierarchy question for a
+# cluster, that's honestly "no finding for that cluster" (we can't tell,
+# not "yes" or a fabricated "no" for the whole page) -- not a reason to
+# lose every other engine result the vendored code already computed.
+_original_check_AM_FH = rule_check.check_AM_FH
+
+
+def _safe_check_AM_FH(final_results, item_list, img_h, img_w):
+    try:
+        return _original_check_AM_FH(final_results, item_list, img_h, img_w)
+    except ValueError:
+        return final_results
+
+
+rule_check.check_AM_FH = _safe_check_AM_FH
+
 TAG_TO_CATEGORY = {
     "button": "Button",
     "img": "ImageView",
@@ -226,8 +259,21 @@ def analyze(capture) -> list:
             )
 
     findings = []
+    seen = set()
     for dp_code, instances in (final_results or {}).items():
         for inst in instances:
+            # UIGuard's own rules can independently match several distinct
+            # DOM nodes that occupy the same/overlapping bbox (e.g. an ad
+            # image plus a separate "Ad" badge label at the same position),
+            # producing repeat findings a user perceives as duplicates of
+            # one thing. Collapse same-pattern-type findings at the same
+            # bbox into one, regardless of why the vendored detection
+            # produced repeats.
+            bbox = tuple(round(v, 1) for v in inst.get("bbox", ()))
+            key = (dp_code, bbox)
+            if key in seen:
+                continue
+            seen.add(key)
             findings.append(Finding(
                 engine="visual",
                 pattern_type=_readable_name(dp_code),
