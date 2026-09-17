@@ -152,7 +152,12 @@ def capture(source: str, is_fixture: bool = False) -> Capture:
                 url = source
 
             dom_html = page.content()
-            screenshot_png = page.screenshot()
+            # Default page.screenshot() only captures the visible viewport
+            # (1280x720). Most real pages' content, and most findings' bboxes,
+            # sit below that -- full_page=True captures the whole scrollable
+            # page so the frontend's overlay boxes land on content that's
+            # actually in the image.
+            screenshot_png = page.screenshot(full_page=True)
             rendered_text = page.inner_text("body")
             elements = _extract_elements(page)
             click_trace = _walk_click_trace(page)

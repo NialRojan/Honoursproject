@@ -9,6 +9,7 @@ from playwright.sync_api import sync_playwright
 from capture.capture import EXTRACT_ELEMENTS_JS, capture
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
+TEST_FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 def test_capture_fixture_extracts_dom_and_screenshot():
     result = capture(str(FIXTURES_DIR / "precheck_consent.html"), is_fixture=True)
@@ -99,6 +100,18 @@ def test_extract_elements_reflects_live_checked_state_not_just_attribute():
     by_id = {r["attrs"].get("id"): r for r in raw if r["tag"] == "input"}
     assert "checked" in by_id["js-checked"]["attrs"]
     assert "checked" not in by_id["js-unchecked"]["attrs"]
+
+def test_screenshot_covers_full_page_not_just_viewport():
+    # page.screenshot() with no full_page=True only captures the visible
+    # viewport (default ~800px tall). Any element below that -- most of a
+    # real page's content -- had a bbox pointing outside the image the
+    # frontend actually displays, so its overlay box couldn't be shown.
+    from PIL import Image
+    import io
+
+    result = capture(str(TEST_FIXTURES_DIR / "tall_page.html"), is_fixture=True)
+    img = Image.open(io.BytesIO(result.screenshot_png))
+    assert img.height > 3000
 
 def test_capture_raises_on_non_2xx_http_status():
     server = HTTPServer(("127.0.0.1", 0), _BadGatewayHandler)
