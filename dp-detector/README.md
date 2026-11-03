@@ -1,8 +1,7 @@
 # Dark Pattern Detection Engine — Phase 1 Prototype
 
 Implements the four-engine architecture (Structure, Visual, Linguistic,
-Behavior) from the design spec at
-`../docs/superpowers/specs/2026-09-16-multimodal-dark-pattern-engine-design.md`.
+Behavior).
 
 ## Setup
 
