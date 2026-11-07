@@ -4,3 +4,6 @@ __pycache__/
 training/data/
 models/
 .pytest_cache/
+results/
+eval/data/contextdp_web/images/
+results_*.log
